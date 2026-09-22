@@ -1,0 +1,254 @@
+import React, { useState, useEffect } from 'react';
+import { useEmergency } from '../context/EmergencyContext';
+import { Phone, PhoneOff, Mic, Volume2, Grid, User } from 'lucide-react';
+
+export default function FakeCallModal() {
+  const { fakeCallState, closeFakeCall, answerFakeCall } = useEmergency();
+  const { isOpen, callerName, callerPhone, isAnswered } = fakeCallState;
+
+  const [callDuration, setCallDuration] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+
+  // In-call timer & caller speech script
+  useEffect(() => {
+    let interval;
+    if (isOpen && isAnswered) {
+      interval = setInterval(() => {
+        setCallDuration((prev) => prev + 1);
+      }, 1000);
+
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const script = "Hey! Where are you right now? I'm waiting for you right outside the gate. Are you coming?";
+        const utterance = new SpeechSynthesisUtterance(script);
+        utterance.rate = 0.95;
+        utterance.pitch = 1.1;
+        window.speechSynthesis.speak(utterance);
+      }
+    } else {
+      setCallDuration(0);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [isOpen, isAnswered]);
+
+  if (!isOpen) return null;
+
+  const formatDuration = (secs) => {
+    const mins = Math.floor(secs / 60);
+    const remaining = secs % 60;
+    return `${String(mins).padStart(2, '0')}:${String(remaining).padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="modal-overlay" style={{ zIndex: 1000, background: 'rgba(0, 0, 0, 0.9)' }}>
+      <div className="fake-call-screen">
+        {/* Top Caller Header */}
+        <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+          <div
+            style={{
+              width: '84px',
+              height: '84px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #334155, #1e293b)',
+              border: '2px solid rgba(255, 255, 255, 0.2)',
+              margin: '0 auto 1.25rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#94a3b8'
+            }}
+          >
+            <User size={44} />
+          </div>
+
+          <h2 style={{ fontSize: '1.65rem', fontWeight: 700, letterSpacing: '-0.5px' }}>
+            {callerName}
+          </h2>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginTop: '0.25rem' }}>
+            {callerPhone}
+          </p>
+
+          <p
+            style={{
+              color: isAnswered ? '#10b981' : '#f59e0b',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              marginTop: '0.75rem',
+              fontFamily: 'var(--font-mono)'
+            }}
+          >
+            {isAnswered ? formatDuration(callDuration) : 'Incoming Call...'}
+          </p>
+        </div>
+
+        {/* In-Call Keypad Controls */}
+        {isAnswered && (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '1rem',
+              padding: '1rem 0'
+            }}
+          >
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.4rem',
+                color: isMuted ? '#ef4444' : '#cbd5e1',
+                fontSize: '0.75rem'
+              }}
+            >
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255,255,255,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Mic size={22} />
+              </div>
+              {isMuted ? 'Unmute' : 'Mute'}
+            </button>
+
+            <button
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.4rem',
+                color: '#cbd5e1',
+                fontSize: '0.75rem'
+              }}
+            >
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: 'rgba(255,255,255,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Grid size={22} />
+              </div>
+              Keypad
+            </button>
+
+            <button
+              onClick={() => setIsSpeakerOn(!isSpeakerOn)}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.4rem',
+                color: isSpeakerOn ? '#3b82f6' : '#cbd5e1',
+                fontSize: '0.75rem'
+              }}
+            >
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '50%',
+                  background: isSpeakerOn ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Volume2 size={22} />
+              </div>
+              Speaker
+            </button>
+          </div>
+        )}
+
+        {/* Action Buttons: Accept / Decline */}
+        <div style={{ marginBottom: '1rem' }}>
+          {!isAnswered ? (
+            <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'center' }}>
+              <button
+                onClick={closeFakeCall}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: '#fff' }}
+              >
+                <div
+                  style={{
+                    width: '68px',
+                    height: '68px',
+                    borderRadius: '50%',
+                    background: '#ef4444',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 20px rgba(239, 68, 68, 0.5)'
+                  }}
+                >
+                  <PhoneOff size={28} />
+                </div>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Decline</span>
+              </button>
+
+              <button
+                onClick={answerFakeCall}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: '#fff' }}
+              >
+                <div
+                  style={{
+                    width: '68px',
+                    height: '68px',
+                    borderRadius: '50%',
+                    background: '#10b981',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 20px rgba(16, 185, 129, 0.5)',
+                    animation: 'sosPulse 1.8s infinite'
+                  }}
+                >
+                  <Phone size={28} />
+                </div>
+                <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Accept</span>
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button
+                onClick={closeFakeCall}
+                style={{
+                  width: '68px',
+                  height: '68px',
+                  borderRadius: '50%',
+                  background: '#ef4444',
+                  color: 'white',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 20px rgba(239, 68, 68, 0.5)'
+                }}
+              >
+                <PhoneOff size={30} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
